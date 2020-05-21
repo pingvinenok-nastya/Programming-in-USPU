@@ -62,8 +62,8 @@ public:
 	};
 	virtual void key_off(){
 		for(int i=0;i<4;i++){
-					_eg[i]->key_off();
-				}
+			_eg[i]->key_off();
+		}
 	};
 };
 

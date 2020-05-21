@@ -19,8 +19,9 @@ FMWaveGenerator::FMWaveGenerator()
 	_algorithm = 0;
 }
 
-void FMWaveGenerator::setup(const FMInstrument & inst)
+void FMWaveGenerator::setup(const FMInstrument& inst)
 {
+
 	_algorithm = inst.al;
 	_feedback = inst.fb;
 	for (int i = 0; i < 4; i++) {
@@ -30,6 +31,8 @@ void FMWaveGenerator::setup(const FMInstrument & inst)
 		_eg[i]->set_sustain_rate(inst.op[i].sr);
 		_eg[i]->set_release_rate(inst.op[i].rr);
 		_detune[i] = inst.op[i].dt;
+		_multiplier[i]=i+1;
+		_beta[i]=i*Pi;
 	}
 }
 

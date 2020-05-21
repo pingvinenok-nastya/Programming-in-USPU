@@ -6,6 +6,7 @@
  */
 
 #include "AudioDriver.h"
+#include <iostream>
 
 static void audio_callback(void * userdata, Uint8 * stream, int len)
 {
@@ -37,8 +38,11 @@ AudioDriver::~AudioDriver()
 
 void AudioDriver::callback(short * buffer, int samples)
 {
-	for (int i = 0; i < samples; i++)
+	for (int i = 0; i < samples; i++){
 		buffer[i] = short(_source ->next_sample() * _master_volume);
+		std::cout <<buffer[i]<< std::endl;
+	}
+
 }
 
 
