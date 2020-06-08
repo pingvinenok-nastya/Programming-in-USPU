@@ -37,6 +37,8 @@ public:
 	virtual ~ConstantEnvelopeGenerator() = default;
 
 	virtual double next_sample() { return _level; }
+
+	virtual void set_level(double level){ _level = level; }
 };
 
 class ADSREnvelopeGenerator: public EnvelopeGenerator

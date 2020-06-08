@@ -10,6 +10,7 @@
 #include "globals.h"
 #include "EnvelopeGenerator.h"
 #include <math.h>
+#include <iostream>
 
 FMWaveGenerator::FMWaveGenerator()
 {
@@ -48,7 +49,8 @@ double w1 = _freq * _multiplier[0] + _detune[0];
 double w2 = _freq * _multiplier[1] + _detune[1];
 double w3 = _freq * _multiplier[2] + _detune[2];
 double w4 = _freq * _multiplier[3] + _detune[3];
-double t = 1/44100;
+static double t = 0.;
+t += 1. / AUDIO_SAMPLING_FREQUENCY;
 	switch (_algorithm) {
 	case 0:
 		result =
@@ -143,8 +145,6 @@ double t = 1/44100;
 	default:
 		throw std::runtime_error("WTF");
 	}
-	result = sin(2. * Pi * _period_counter);
-
 	WaveGenerator::next_sample();
 	return result;
 }
