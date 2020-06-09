@@ -16,7 +16,7 @@ struct FMInstrument
 {
 	int al;
 	bool fb;
-	struct { double at, dr, sl, sr, rr, dt; } op[4];
+	struct { double at, dr, sl, sr, rr, dt, ml, ol; } op[4];
 };
 
 class FMWaveGenerator: public WaveGenerator

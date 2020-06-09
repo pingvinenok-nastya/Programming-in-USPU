@@ -28,10 +28,10 @@ int main(int, char**)
 
 	FMInstrument inst
 			{ 5, true, {
-			  { 1., 0.1, 0.9, 0.000001, 1.0, 0.},
-			  { 1., 0.1, 0.9, 0.000001, 1.0, 0. },
-			  { 1., 0.1, 0.9, 0.000001, 1.0, 0.},
-			  { 1., 0.1, 0.9, 0.000001, 1.0, 0.} } };
+			  { 1., 0.1, 0.9, 0.000001, 1.0, 0.,1.,0.7},
+			  { 1., 0.1, 0.9, 0.000001, 1.0, 0.,1.,0.2 },
+			  { 1., 0.1, 0.9, 0.000001, 1.0, 0.,0.5,0.3},
+			  { 1., 0.1, 0.9, 0.000001, 1.0, 0.,0.25,0.5} } };
 
 	AudioDriver drv;
 	drv.unpause();
@@ -39,9 +39,6 @@ int main(int, char**)
 	auto src = std::make_shared<SoundSource>();
 	auto wg = std::make_shared<FMWaveGenerator>();
 	auto eg = std::make_shared<ConstantEnvelopeGenerator>(1.);
-
-
-	//wg->set_freq(440.);
 
 	wg->setup(inst);
 	src->set_envelope_generator(eg);
@@ -70,7 +67,7 @@ int main(int, char**)
 
 		std::fstream file;
 
-		file.open("MIDI_sample.mid", std::ios::in | std::ios::binary);
+		file.open("badapple2.mid", std::ios::in | std::ios::binary);
 
 		int chunk_type;
 		int MThd_length;
@@ -80,7 +77,7 @@ int main(int, char**)
 		int tempo = 500000;
 		int old_event_type = 0;
 		int nn,dd,cc = 0x18,bb = 0x08;
-		double zaderj;
+		int l,l_old,s;
 
 
 		// Читаем заголовок
@@ -136,21 +133,30 @@ int main(int, char**)
 			file.read(&track[i][0], trk_length);
 		}
 
-		size_t trk = 1;
+		size_t trk = 3;
 		std::cout << " " << std::endl;
+
+		using clk = std::chrono::steady_clock;
+		auto pop = std::chrono::microseconds(tempo)/(cc*bb)/2;
+		auto tp_now = clk::now();
+		auto tp_next = tp_now;
 
 		size_t p = 0;
 		while (p < track[trk].size()) {
 			int delta = 0;
 			int delta_v;
-
 			do {
 			  delta_v = track[trk][p++];
 			  delta *= 128;
 			  delta += delta_v & 0x7f;
 			} while (delta_v & 0x80);
-			zaderj=delta*tempo/(cc*bb);
-			SDL_Delay(zaderj/1000);
+			tp_next = tp_next+pop*delta;
+			do{
+				tp_now = clk::now();
+			}while(tp_now<tp_next);
+
+			//zaderj=delta*tempo/(cc*bb);
+			//SDL_Delay(zaderj/2000);
 			std::cout << std::setw(10) << delta << ":---> ";
 
 			unsigned int event_type = 0x000000ff & track[trk][p++];
@@ -166,17 +172,18 @@ int main(int, char**)
 
 			switch(event_type) {
 			case 0x80 ... 0x8f:{
-				int l = track[trk][p++];
-				int s = int(track[trk][p++]);
-				wg->key_off();
+				l = track[trk][p++];
+				s = int(track[trk][p++]);
+				if(l==l_old) wg->key_off();
 				std::cout << "ВЫЫЫключить ноту " << l << " c громкостью "<<  s <<std::endl;
 			}
 				break;
 			case 0x90 ... 0x9f:{
-				int l = track[trk][p++];
-				int s = int(track[trk][p++]);
-				eg->set_level(l);
-				wg->set_freq(s_freq_table[s]);
+				l = track[trk][p++];
+				s = int(track[trk][p++]);
+				l_old=l;
+				eg->set_level(s/127.0);
+				wg->set_freq(s_freq_table[l]);
 				wg->key_on();
 				std::cout << "Включить ноту " << l << " c громкостью "<<  s <<std::endl;
 			}
@@ -200,11 +207,38 @@ int main(int, char**)
 				std::cout << "Aftertouch" ;
 				std::cout << " Его параметр - " << int(track[trk][p++])<< std::endl;
 				break;
-			case 0xe0 ... 0xef:
-				std::cout << " Это метасобытие7" << std::endl;
+			case 0xe0 ... 0xef:{
+
+				int l1,m1;
+				l1=int(track[trk][p++]);
+				m1=int(track[trk][p++]);
+				int bend = m1*128+l1;
+				bend-=0x2000;
+				std::cout << " Pitch Wheel Change" <<bend<< std::endl;
+				double f1,f2,fb;
+				if(bend>0){
+					f1 = s_freq_table[l];
+					f2 = s_freq_table[l+1];
+					fb = f1 + (bend / 8192.0) * (f2-f1);
+				}else if(bend<0){
+					f1 = s_freq_table[l-1];
+					f2 = s_freq_table[l];
+					fb = f2 + (bend / 8192.0) * (f2-f1);
+				}else{
+					fb = s_freq_table[l];
+				}
+				wg->set_freq(fb);
+			}
+
 				break;
-			case 0xf0:
+			case 0xf0:{
+				int q=0;
+				while(q!=0xf7){
+					q = int(track[trk][p++]& 0xff);
+				}
+				p++;
 				std::cout << " Это метасобытие8" << std::endl;
+			}
 				break;
 			case 0xf1:
 				std::cout << " Это метасобытие9" << std::endl;
@@ -252,8 +286,12 @@ int main(int, char**)
 			{
 				int meta_type = int(track[trk][p++]);
 				switch(meta_type) {
-					case 0x01:
-						std::cout << "А" << std::endl;
+					case 0x01:{
+						unsigned len = unsigned(track[trk][p++]);
+						std::string str;
+						while (len--) str += char(track[trk][p++]);
+						std::cout << "Здесь написано: " << str << std::endl;
+					}
 						break;
 					case 0x02:
 						std::cout << "АА" << std::endl;
@@ -269,6 +307,13 @@ int main(int, char**)
 					case 0x04:
 						std::cout << "ААА" << std::endl;
 						break;
+					case 0x06:{
+						unsigned len = unsigned(track[trk][p++]);
+						std::string str;
+						while (len--) str += char(track[trk][p++]);
+						std::cout << "Здесь тоже написано: " << str << std::endl;
+					}
+						break;
 					case 0x2f:
 						p++;
 						std::cout << "Конец трека" << std::endl;
@@ -280,6 +325,7 @@ int main(int, char**)
 						tempo += 0x100   * int(track[trk][p++]);
 						tempo +=           int(track[trk][p++]);
 						std::cout << "Задание темпа" << std::endl;
+						pop = std::chrono::microseconds(tempo)/(cc*bb)/2;
 						break;
 					case 0x58:
 						p++;
