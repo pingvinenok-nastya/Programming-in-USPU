@@ -208,7 +208,6 @@ int main(int, char**)
 				std::cout << " Его параметр - " << int(track[trk][p++])<< std::endl;
 				break;
 			case 0xe0 ... 0xef:{
-
 				int l1,m1;
 				l1=int(track[trk][p++]);
 				m1=int(track[trk][p++]);
